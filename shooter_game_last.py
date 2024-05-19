@@ -1,225 +1,244 @@
-from pygame import *
-from random import randint
-from time import time as get_time
+import random
+from time import time as time_get
+from pygame import*
 
-
-SCREEN_SIZE = (1000, 800)
+font.init()
+#Переменные, задающие размеры игровой сцены и спрайтов
+SCREEN_SIZE = (920, 980)
 SPRITE_SIZE = 70
+WHITE = (255, 255, 255)
 
-def show_label(text, x, y, font_name='Arial', color=(255, 255, 255)):
-    font.init()
-    font1 = font.SysFont(font_name, 40)
+def show_label(text: str, x: int, y: int, font_size: int, font_name: str ='Arial', color: tuple = WHITE) -> None:
+    '''
+    Функция выводит надпись на игровуй сцену window.
+
+    Аргументы:
+    x, y - координаты выводимого текста
+    text - выводимый текст
+    font_name - имя шрифта, которым будет написан текст 
+    color - цвет текста (RGB)
+    font_size - размер шрифта
+    '''
+    font1 = font.SysFont(font_name, font_size)
     text = font1.render(text, True, color)
     window.blit(text, (x, y))
 
-class Live:
-    def __init__(self, x,y, image_name, lives):
-        self.lives = lives
-        self.image = transform.scale(image.load(image_name), (SPRITE_SIZE//2, SPRITE_SIZE//2))
-        self.x = x
-        self.y = y
 
-    def update(self):
-        for i in range(self.lives):
-            window.blit(self.image, (self.x-i*40, self.y))
-
-lives = Live(SCREEN_SIZE[0] - SPRITE_SIZE//2, 20, 'rocket.png', 5)
+def show_text(text):
+    font.init()
+    font1 = font.SysFont('Arial', 40)
+    text = font1.render(text, True, (255, 255, 255))
+    window.blit(text, (250, 200))
+    return True
 
 class GameSprite(sprite.Sprite):
-    def __init__(self, image_name, speed, x, y):
+    '''
+    Родительский класс для всех ишгровых объектов
+    '''
+    def __init__(self, player_image: str, player_x: int, player_y: int, player_speed: int) -> None:
+        '''
+        Аргументы:
+
+        x, y - координаты выводимого текста
+        image_name - имя файла-картинки, которая отображает жизнь
+        speed - скорость движения спрайта
+        '''
         super().__init__()
-        self.image = image.load(image_name)
-        self.image = transform.scale(self.image, (SPRITE_SIZE, SPRITE_SIZE))
-        self.speed = speed
+        self.image = transform.scale(image.load(player_image), (65, 65))
+        self.speed = player_speed
         self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-    def reset(self):
+        self.rect.x = player_x
+        self.rect.y = player_y
+    def reset(self) -> None:
+        '''Отрисосвывает сам спрайт на экране'''
         window.blit(self.image, (self.rect.x, self.rect.y))
 
 class Player(GameSprite):
-    def update(self):
-        keys_pressed = key.get_pressed()
-        if keys_pressed[K_a] and self.rect.x > 0:
-            self.rect.x -= self.speed
-        if keys_pressed[K_d] and self.rect.x < SCREEN_SIZE[0]-SPRITE_SIZE:
-            self.rect.x += self.speed
-        if keys_pressed[K_SPACE] and get_time() - self.last_shoot > .2:
-            self.shoot()
-            self.last_shoot = get_time()
-    
-    def shoot(self):
-        new_bullet = Bullet('bullet.png', 7, self.rect.centerx-3, self.rect.y)
-        new_bullet.image = transform.scale(new_bullet.image, (10, 30))
-        bullets.add(new_bullet)
-        if chetchik2.counter >= 10:
-            new_bullet = Bullet('bullet.png', 7, self.rect.centerx-3, self.rect.y, 1)
-            new_bullet.image = transform.scale(new_bullet.image, (10, 30))
-            bullets.add(new_bullet)
-            new_bullet = Bullet('bullet.png', 7, self.rect.centerx-3, self.rect.y, 2)
-            new_bullet.image = transform.scale(new_bullet.image, (10, 30))
-            bullets.add(new_bullet)
-    
+    '''Класс для игрока'''
+    def update(self) -> None:
+        '''
+        Обарабатывает нажатие клавиш:
+
+        a, d - left, right
+        space - shoot
+        '''
+        key_presssed = key.get_pressed()        
+        if key_presssed[K_a] and self.rect.x > 0:
+            self.rect.x -= self.speed            
+        if key_presssed[K_d]and self.rect.x < 700 - self.rect.width:
+            self.rect.x += self.speed        
+        if key_presssed[K_SPACE]:
+            try:
+                if time_get() - self.shoot_time > .3:
+                    self.shoot()
+            except:
+                self.shoot()
+    def shoot(self) -> None:
+        '''Метод для выстрела'''
+        for i in range(3):
+            b2 = Bullet('bullet.png', self.rect.x + 27, self.rect.y, 7, 10, 30, direction=i)
+            bullets.add(b2)
+        self.shoot_time = time_get()
+
+class Lives:
+    '''
+    Жизни для игрока
+    ''' 
+    def __init__(self, lives: int, x: int, y: int, image_name: str):
+        '''
+        x, y - координаты, от которой начинается отрисовка жизней
+        image_name - имя файла-картинки, которая отображает жизнь
+        lives - количество жизней
+        '''
+        self.lives = lives
+        self.x = x
+        self.y = y
+        self.image= transform.scale(image.load('heart.png'), (30, 30))
+    def draw(self):
+        '''
+        Отрисовывают жизни на экране
+        '''
+        window.blit(self.image, (self.x, self.y))
+               
 
 class Enemy(GameSprite):
-    def __init__(self, image_name, speed, x, y):
-        super().__init__(image_name, speed, x, y)
-        self.hp = randint(1, 3)
+    def __init__(self, player_image: str, player_x: int, player_y: int, player_speed: int) -> None:
+        '''
+        Аргументы:
 
+        x, y - координаты выводимого текста
+        image_name - имя файла-картинки, которая отображает жизнь
+        speed - скорость движения спрайта
+        '''
     def update(self):
+        '''
+        Движение врагов вниз.
+        Если враг долетает до низа игровой сцены, то переставляем его наврех и увеличиваем счетчик пропущенный врагов.
+        '''
         self.rect.y += self.speed
-        if self.rect.y >= SCREEN_SIZE[1]:
+        if self.rect.y >= 500:
             self.rect.y = 0
-            self.rect.x = randint(0, SCREEN_SIZE[0] - SPRITE_SIZE)
-            missed_counter.counter += 1
-            missed_counter.set_text(24,(255,255,255))
-        self.reset()
+            self.rect.x = random.randint(1, 635)
+            missed.counter += 1
+
 
 class Asteroid(GameSprite):
+    '''Класс для астероидов'''
+    def __init__(self, player_image, player_x, player_y, player_speed, size):
+        super().__init__(player_image, player_x, player_y, player_speed)
+        self.image = transform.scale(self.image, (size, size)) 
     def update(self):
+        '''Движение астероидов вниз'''
         self.rect.y += self.speed
-        if self.rect.y >= SCREEN_SIZE[1]:
+        if self.rect.y >= 500:
             self.rect.y = 0
-            self.rect.x = randint(0, SCREEN_SIZE[0] - SPRITE_SIZE)
-        self.reset()
+            self.rect.x = random.randint(1, 635)
 
-class Heart(GameSprite):
-    def update(self):
-        self.rect.y += self.speed
-        if self.rect.y < SCREEN_SIZE[1]:
-            self.reset()
-        else:
-            if randint(1, 100) == 1:
-                self.rect.y = 0
-                self.rect.x = randint(1, SCREEN_SIZE[0] - SPRITE_SIZE)
-                
-heart = Heart('rocket.png', 2, randint(1,SCREEN_SIZE[0] - SPRITE_SIZE), SCREEN_SIZE[1]*2)
-
-class Bullet(GameSprite):
-    def __init__(self, image_name, speed, x, y, direction=0):
-        super().__init__(image_name, speed, x, y)
-        self.direction = direction
-    
-    def update(self):
-        self.rect.y -= self.speed
-        if self.direction == 1:
-            self.rect.x -= self.speed
-        if self.direction == 2:
-            self.rect.x += self.speed
-        self.reset()
-bullets = sprite.Group()
-asteroids = sprite.Group()
-for i in range(2):
-    asteroids.add(Asteroid('asteroid.png', randint(1,2), randint(0, 635), 0))
-
-
-font.init()
+        
 
 class Counter:
-    def __init__(self,text,x,y):
+    def __init__(self, text: str, x: int, y: int):
         self.counter = 0
-        self.text = text 
-        self.pos = (x,y)
-    
-    def set_text(self,font_size,text_color):
-        f = font.SysFont('Arial',font_size)
-        self.image = f.render(self.text + str(self.counter),True,text_color)
+        self.text = text
+        self.position = (x, y)
 
-    def draw(self):
-        window.blit(self.image, self.pos)
+    def show(self):
+        font.init()
+        font1 = font.SysFont('Arial', 20)
+        text = font1.render(self.text + str(self.counter), True, (255,255,255))
+        window.blit(text, self.position)
 
+class Bullet(GameSprite):
+    '''Класс для пуль'''
+    def __init__(self, player_image, player_x, player_y, player_speed, w,h, direction):
+        '''
+        Аргументы:
 
+        x, y - координаты выводимого текста
+        image_name - имя файла-картинки, которая отображает жизнь
+        speed - скорость движения спрайта
+        directiuon - направление
+            0 - вертикально вверх
+            1 - вверх и влево
+            2 - вверх и вправо
+        '''
+        super().__init__(player_image, player_x, player_y, player_speed)
+        self.image = transform.scale(image.load(player_image), (w, h))
+        self.direction = direction
+    def update(self):
+        if  self.direction == 1:
+            self.rect.x -= 1
+        if  self.direction == 2:
+            self.rect.x += 1
+            
+        self.rect.y -= self.speed
 
+lives = Lives(3, 650, 20)
+        
 
+missed = Counter('Список пропущенных врагов: ', 10,10)
+killed = Counter('Список убитых врагов: ', 10,35)
 
-player = Player('rocket.png', 7, 10, SCREEN_SIZE[1] - SPRITE_SIZE - 5)
-player.last_shoot = 0
-
-ufos = sprite.Group()
+bullets = sprite.Group()
+asteroids = sprite.Group()
+monsters = sprite.Group()
 for i in range(5):
-    ufos.add(Enemy('ufo.png', randint(1, 3), randint(0, 635), 0))
-
-window = display.set_mode(SCREEN_SIZE)
-display.set_caption('Shooter')
-
-missed_counter = Counter('Счетчик пропущенных:',10,10)
-missed_counter.set_text(24,(255,255,255))
-
-chetchik2 = Counter('Счетчик уничтоженных:',10,50)
-chetchik2.set_text(24,(255,255,255))
-
+    monsters.add(Enemy('ufo.png', random.randint(1, 635), 0, random.randint(1, 3)))
+for i in range(2):
+    asteroids.add(Asteroid('asteroid.png', random.randint(1, 635), 0, random.randint(1, 3), random.randint(30, 50)))
+player = Player('rocket.png', 300,435, 5)
+window = display.set_mode((700, 500))
+display.set_caption("Шутер")
+background = transform.scale(image.load("galaxy.jpg"), (700, 500))
 mixer.init()
 mixer.music.load('space.ogg')
 mixer.music.play()
-
-
-pic = image.load('galaxy.jpg')
-pic = transform.scale(pic, SCREEN_SIZE)
-
-clock = time.Clock()
-FPS = 60
 game = True
 finish = False
+clock = time.Clock()
 
-end = get_time()+4
-while True:
-    clock.tick(FPS)
-    window.blit(pic, (0,0))
-    show_label(str(int(end - get_time())), SCREEN_SIZE[0]//2 - 20, SCREEN_SIZE[1]//2 - 20)
-    
-    display.update()
-    if get_time() > end:
-        break
-    
 while game:
-    clock.tick(FPS)
+    clock.tick(60)
     if finish == False:
-        window.blit(pic, (0,0))
-        ufos.update()
-        player.reset()
-        player.update()
-        missed_counter.draw()
-        chetchik2.draw()    
-        bullets.update()
+        #Перерисовка всех объектов в игре
+        window.blit(background, (0, 0))
         asteroids.update()
+        asteroids.draw(window)
+        player.update()
+        player.reset()
+        missed.show()
+        killed.show()
+        monsters.update()
+        monsters.draw(window)
+        bullets.update()
+        lives.draw()
         bullets.draw(window)
-        heart.update()
-        if sprite.collide_rect(player, heart):
-            lives.lives += 1
-            heart.rect.y = SCREEN_SIZE[1]*2
-        lives.update()
-        if chetchik2.counter >= 50:
-            show_label('Победа', SCREEN_SIZE[0]//2-40, SCREEN_SIZE[1]//2-20)
+        sprites_list = sprite.groupcollide(monsters, bullets, False, True)
+        for b in sprites_list:
+            b.rect.y = 0
+            b.rect.x = random.randint(1, 635)
+            killed.counter += 1
+        if killed.counter >= 10:
+            show_text('You win!')
             finish = True
-        if missed_counter.counter >= 3:
-            lives.lives -= 1
-            missed_counter.counter = 0
             
-        if sprite.spritecollide(player, ufos, False) or sprite.spritecollide(player, asteroids, False):
-            for s in sprite.spritecollide(player, ufos, False) + sprite.spritecollide(player,asteroids, False):
+        if missed.counter >= 3 or sprite.spritecollideany(player, monsters) or sprite.spritecollideany(player, asteroids):
+            show_text('You lose!')
+            finish = True
+        
+        if lives.lives <= 0:
+            show_text('YOU LOOOSEE')
+            finish = True
+        if sprite.spritecollide(player, monsters, False) or sprite.spritecollide(player, asteroids, False):
+            for s in sprite.spritecollide(player, monsters, False) + sprite.spritecollide(player, asteroids, False):
                 s.rect.y = 0
-                s.rect.x = randint(1,635)
+                s.rect.x = random.randint(1, 635)
                 lives.lives -= 1
-            
-        if lives.lives <= 0:    
-            show_label('Поражение...', SCREEN_SIZE[0]//2-40, SCREEN_SIZE[1]//2-20)
-            finish = True
-        display.update()    
-        
-        list_monsters = sprite.groupcollide(ufos, bullets, False, True)
-        for monster in list_monsters:
-            monster.hp -= 1
-            if monster.hp <= 0:
-                monster.hp = randint(1, 3)
-                monster.rect.y = 0
-                monster.rect.x = randint(1, SCREEN_SIZE[0]-SPRITE_SIZE)
-                chetchik2.counter += 1
-                chetchik2.set_text(24,(255,255,255))
-                if chetchik2.counter == 20:
-                    ufos.add(Enemy('ufo.png', randint(1, 3), randint(0, SCREEN_SIZE[0]-SPRITE_SIZE), 0))
-                    ufos.add(Enemy('ufo.png', randint(1, 3), randint(0, SCREEN_SIZE[0]-SPRITE_SIZE), 0))
 
-        
+        display.update()    
+
+    
+    
     for e in event.get():
         if e.type == QUIT:
             game = False
